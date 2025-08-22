@@ -259,7 +259,7 @@ export class WebPageMonitor {
 
       this.log.info('Webhook notification sent successfully');
     } catch (error) {
-      this.log.error('Failed to send webhook:', error);
+      this.log.error('Failed to send webhook call:', error);
     }
   }
 

@@ -44,7 +44,7 @@ export const main = async (getElementHash, handleAlert) => {
       await fs.unlink(monitor.config.stateFile);
       console.log('✅ Previous state cleared\n');
     } catch (error) {
-      // File doesn't exist, that's fine
+      // File doesn't exist, that's fine.
     }
   }
 

@@ -379,14 +379,8 @@ class WebPageMonitor {
       // Wait for any lazy-loaded content
       await this.waitForLazyContent(page);
 
-      // Log entire page text content before searching for selector
-      const pageText = await page.evaluate(
-        () => document.body.textContent || document.body.innerText || ''
-      );
-      console.log('\n📄 ENTIRE PAGE TEXT CONTENT:');
-      console.log('=====================================');
-      console.log(pageText);
-      console.log('=====================================\n');
+      // Save page content to data folder (overwrite previous)
+      await this.savePageContent(page);
 
       // Extract element data
       const elementData = await this.extractElementData(page);
@@ -517,6 +511,40 @@ class WebPageMonitor {
       this.log('State saved successfully');
     } catch (error) {
       this.logError('Error saving state:', error);
+    }
+  }
+
+  /**
+   * Save page content to data folder (overwrite previous)
+   */
+  async savePageContent(page) {
+    try {
+      // Extract page content
+      const pageText = await page.evaluate(
+        () => document.body.textContent || document.body.innerText || ''
+      );
+
+      // Create data directory path
+      const dataDir = path.join(__dirname, 'data');
+      await fs.mkdir(dataDir, { recursive: true });
+
+      // Save to fixed filename (overwrites previous)
+      const contentFile = path.join(dataDir, 'last-page-content.txt');
+
+      // Add timestamp header
+      const timestamp = new Date().toISOString();
+      const contentWithHeader = `Page content captured at: ${timestamp}
+URL: ${this.config.url}
+Selector: ${this.config.selector}
+
+=====================================
+${pageText}
+=====================================`;
+
+      await fs.writeFile(contentFile, contentWithHeader, 'utf8');
+      this.log('Page content saved to data/last-page-content.txt');
+    } catch (error) {
+      this.logError('Error saving page content:', error);
     }
   }
 

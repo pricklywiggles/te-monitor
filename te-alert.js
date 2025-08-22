@@ -10,53 +10,35 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /**
- * Modern Puppeteer Web Monitor - Optimized for Puppeteer v24+
- * Features:
- * - Modern locator API for better element selection
- * - Improved stealth and anti-detection
- * - Robust error handling and retry logic
- * - Support for both Chrome and Firefox
- * - Efficient resource management
+ * Element Count Monitor - Simple SVG path counter
+ * Monitors changes in the count of SVG path elements on a webpage
  */
 class WebPageMonitor {
   constructor(config = {}) {
-    // Configuration with sensible defaults, can be overridden by environment variables
     const url = config.url || process.env.MONITOR_URL;
-    const selector = config.selector || process.env.MONITOR_SELECTOR;
 
-    // Generate unique state file name based on URL and selector
+    // Generate unique state file name based on URL
     const urlHash = crypto
       .createHash('md5')
-      .update(url)
-      .digest('hex')
-      .substring(0, 8);
-    const selectorHash = crypto
-      .createHash('md5')
-      .update(selector)
+      .update(url || 'default')
       .digest('hex')
       .substring(0, 8);
     const defaultStateFile = path.join(
       __dirname,
-      `state-${urlHash}-${selectorHash}.json`
+      `element-count-state-${urlHash}.json`
     );
 
     this.config = {
       url,
-      selector,
       checkInterval: config.checkInterval || 30 * 60 * 1000, // 30 minutes
       maxRetries: config.maxRetries || 3,
       retryDelay: config.retryDelay || 3000,
-      browser: config.browser || 'chrome', // 'chrome' or 'firefox'
-      headless: config.headless !== undefined ? config.headless : true, // true for new headless mode in v24+
+      headless: config.headless !== undefined ? config.headless : true,
       timeout: config.timeout || 30000,
       stateFile:
         config.stateFile || process.env.MONITOR_STATE_FILE || defaultStateFile,
       alertWebhook: config.alertWebhook || null,
       debug: config.debug || false,
-      // Advanced options
-      useLocators:
-        config.useLocators !== undefined ? config.useLocators : false, // Locator API is experimental, use traditional by default
-      ignoreMinorChanges: config.ignoreMinorChanges || false,
       ...config
     };
 
@@ -208,157 +190,6 @@ class WebPageMonitor {
   }
 
   /**
-   * Extract element data using modern Puppeteer APIs
-   */
-  async extractElementData(page) {
-    const { selector, useLocators } = this.config;
-
-    try {
-      // First, let's verify the element exists in the DOM (including hidden elements)
-      const elementExists = await page.evaluate((sel) => {
-        const element = document.querySelector(sel);
-        if (element) {
-          const computedStyle = window.getComputedStyle(element);
-          const isHidden =
-            computedStyle.display === 'none' ||
-            computedStyle.visibility === 'hidden' ||
-            computedStyle.opacity === '0' ||
-            element.offsetWidth === 0 ||
-            element.offsetHeight === 0;
-          console.log(
-            `Element found: ${sel}, hidden: ${isHidden}, content: ${element.textContent?.substring(
-              0,
-              50
-            )}`
-          );
-          return true;
-        }
-        console.log(`Element not found: ${sel}`);
-        return false;
-      }, selector);
-
-      if (!elementExists) {
-        this.log(`Element ${selector} not found in DOM`);
-        return null;
-      }
-
-      if (useLocators) {
-        // Use modern locator API with better error handling
-        try {
-          const locator = page.locator(selector);
-
-          // For Puppeteer v24, use setWaitForEnabled and setWaitForStableBoundingBox
-          locator.setVisibility(null); // Don't filter by visibility
-          locator.setWaitForEnabled(false); // Don't wait for enabled state
-          locator.setWaitForStableBoundingBox(false); // Don't wait for stable position
-
-          // Wait for at least one element matching the selector
-          await locator.wait({ timeout: 10000 }).catch((err) => {
-            this.log(`Locator wait failed: ${err.message}`);
-            throw err;
-          });
-
-          // Get all matching elements using locator.all()
-          const elements = await locator.all();
-
-          if (elements.length === 0) {
-            this.log('No elements found with locator');
-            return null;
-          }
-
-          const elementData = [];
-
-          // Iterate through all matching elements
-          for (const element of elements) {
-            // Use waitHandle to get the element handle
-            const handle = await element
-              .waitHandle({ timeout: 1000 })
-              .catch(() => null);
-
-            if (handle) {
-              const data = await handle.evaluate((el) => ({
-                outerHTML: el.outerHTML,
-                textContent: (el.textContent || '').trim(),
-                tagName: el.tagName,
-                classList: Array.from(el.classList),
-                attributes: Array.from(el.attributes).map((attr) => ({
-                  name: attr.name,
-                  value: attr.value
-                })),
-                childrenCount: el.children.length,
-                boundingBox: el.getBoundingClientRect()
-              }));
-              elementData.push(data);
-              // Dispose of element handle to prevent memory leaks
-              await handle.dispose();
-            }
-          }
-
-          this.log(
-            `Extracted ${elementData.length} elements using locator API`
-          );
-          return elementData;
-        } catch (locatorError) {
-          this.log(
-            `Locator approach failed: ${locatorError.message}, falling back to traditional method`
-          );
-          return await this.extractWithQuerySelector(page, selector);
-        }
-      } else {
-        // Use traditional approach
-        return await this.extractWithQuerySelector(page, selector);
-      }
-    } catch (error) {
-      this.log(`Element extraction failed: ${error.message}`);
-      return null;
-    }
-  }
-
-  /**
-   * Extract element data using traditional querySelector approach
-   */
-  async extractWithQuerySelector(page, selector) {
-    try {
-      // Wait for the selector to be present (including hidden elements)
-      await page.waitForSelector(selector, {
-        timeout: 10000,
-        visible: false // Allow hidden elements
-      });
-
-      // Use page.$$ to get all matching elements
-      const elements = await page.$$(selector);
-
-      if (elements.length === 0) {
-        return null;
-      }
-
-      const elementData = [];
-      for (const element of elements) {
-        const data = await element.evaluate((el) => ({
-          outerHTML: el.outerHTML,
-          textContent: (el.textContent || '').trim(),
-          tagName: el.tagName,
-          classList: Array.from(el.classList),
-          attributes: Array.from(el.attributes).map((attr) => ({
-            name: attr.name,
-            value: attr.value
-          })),
-          childrenCount: el.children.length,
-          boundingBox: el.getBoundingClientRect()
-        }));
-        elementData.push(data);
-        // Dispose of element handle to prevent memory leaks
-        await element.dispose();
-      }
-
-      return elementData;
-    } catch (error) {
-      this.log(`Traditional extraction failed: ${error.message}`);
-      return null;
-    }
-  }
-
-  /**
    * Get element hash with retry logic
    */
   async getElementHash(retryCount = 0) {
@@ -455,23 +286,6 @@ class WebPageMonitor {
       // Non-critical error, continue
       this.log('Lazy content loading skipped');
     }
-  }
-
-  /**
-   * Get only significant content for comparison (ignores minor changes)
-   */
-  getSignificantContent(elementData) {
-    return elementData.map((el) => ({
-      textContent: el.textContent,
-      tagName: el.tagName,
-      childrenCount: el.childrenCount,
-      // Ignore frequently changing attributes
-      significantAttributes: el.attributes
-        .filter(
-          (attr) => !['data-timestamp', 'data-random', 'id'].includes(attr.name)
-        )
-        .map((attr) => ({ name: attr.name, value: attr.value }))
-    }));
   }
 
   /**
@@ -573,7 +387,7 @@ class WebPageMonitor {
       reason,
       timestamp: new Date().toISOString(),
       url: this.config.url,
-      selector: this.config.selector,
+      selector: '.desktop > div > div.svg:last-of-type > svg > path',
       previousHash: previousState?.hash,
       currentHash: currentState?.hash,
       changes: this.detectSpecificChanges(previousState, currentState)
@@ -719,38 +533,30 @@ class WebPageMonitor {
   }
 }
 
-// Example usage with modern configuration
 async function main() {
-  // Get URL and selector from environment variables
   const url = process.env.MONITOR_URL;
-  const selector = process.env.MONITOR_SELECTOR;
   const checkInterval =
-    parseInt(process.env.MONITOR_INTERVAL) || 10 * 60 * 1000; // Default 30 minutes
+    parseInt(process.env.MONITOR_INTERVAL) || 10 * 60 * 1000; // Default 10 minutes
   const debug = process.env.MONITOR_DEBUG === 'true';
   const webhookUrl = process.env.MONITOR_WEBHOOK || null;
   const clearState = process.env.MONITOR_CLEAR_STATE === 'true';
 
-  if (!process.env.MONITOR_URL || !process.env.MONITOR_SELECTOR) {
-    console.log(
-      '⚠️  Using default values. Set environment variables for custom monitoring:'
-    );
-    console.log('   MONITOR_URL - URL to monitor');
-    console.log('   MONITOR_SELECTOR - CSS selector to watch');
+  if (!process.env.MONITOR_URL) {
+    console.log('⚠️  Required environment variable missing:');
+    console.log('   MONITOR_URL - URL to monitor (required)');
     console.log('   MONITOR_INTERVAL - Check interval in ms (optional)');
     console.log('   MONITOR_DEBUG - Enable debug logging (optional)');
     console.log('   MONITOR_WEBHOOK - Webhook URL for alerts (optional)');
     console.log(
       '   MONITOR_CLEAR_STATE - Clear previous state before starting (optional)\n'
     );
+    process.exit(1);
   }
 
   const monitor = new WebPageMonitor({
     url,
-    selector,
     checkInterval,
-    headless: true, // Use new headless mode in v24+
-    useLocators: false, // Use traditional API (more stable)
-    ignoreMinorChanges: true, // Ignore timestamp changes etc.
+    headless: true,
     debug,
     maxRetries: 3,
     alertWebhook: webhookUrl,

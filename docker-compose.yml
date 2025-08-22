@@ -8,8 +8,6 @@ services:
     environment:
       # Required: URL to monitor
       - MONITOR_URL=${MONITOR_URL}
-      # Required: CSS selector to watch for changes
-      - MONITOR_SELECTOR=${MONITOR_SELECTOR}
       # Optional: Check interval in milliseconds (default: 10 minutes)
       - MONITOR_INTERVAL=${MONITOR_INTERVAL}
       # Optional: Enable debug logging

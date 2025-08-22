@@ -16,7 +16,8 @@ services:
       - MONITOR_WEBHOOK=${MONITOR_WEBHOOK}
       # Optional: Clear previous state on startup
       - MONITOR_CLEAR_STATE=${MONITOR_CLEAR_STATE:-true}
-
+      # Optional: Selector to monitor
+      - MONITOR_SELECTOR=${MONITOR_SELECTOR}
       # Homebridge integration (optional)
       - HB_HOST=${HB_HOST}
       - HB_PORT=${HB_PORT:-8581}

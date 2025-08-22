@@ -379,36 +379,25 @@ class WebPageMonitor {
       // Wait for any lazy-loaded content
       await this.waitForLazyContent(page);
 
-      // Save page content to data folder (overwrite previous)
-      await this.savePageContent(page);
+      // Get element count for monitoring
+      const elementCount = await this.getElementCount(page);
+      console.log(`Element count: ${elementCount}`);
 
-      // Extract element data
-      const elementData = await this.extractElementData(page);
-
-      if (!elementData) {
-        this.log('Target element not found');
-        return null;
-      }
-
-      // Generate hash based on configuration
-      const hashContent = elementData;
-
+      // Create simple hash based on element count
       const hash = crypto
         .createHash('sha256')
-        .update(JSON.stringify(hashContent))
+        .update(elementCount.toString())
         .digest('hex');
 
       const result = {
         hash,
-        elementData,
+        elementCount,
         timestamp: new Date().toISOString(),
-        elementCount: elementData.length,
-        url: this.config.url
+        url: this.config.url,
+        selector: '.desktop > div > div.svg:last-of-type > svg > path'
       };
 
-      this.log(
-        `Successfully extracted data: ${elementData.length} elements found`
-      );
+      this.log(`Successfully counted elements: ${elementCount} found`);
       return result;
     } catch (error) {
       this.logError(`Attempt ${retryCount + 1} failed:`, error);
@@ -515,32 +504,20 @@ class WebPageMonitor {
   }
 
   /**
-   * Save page content to data folder (overwrite previous)
+   * Get element count for monitoring
    */
-  async savePageContent(page) {
+  async getElementCount(page) {
     try {
-      // Extract full page HTML content
-      const pageHTML = await page.content();
+      const selector = '.desktop > div > div.svg:last-of-type > svg > path';
+      const count = await page.evaluate((sel) => {
+        return document.querySelectorAll(sel).length;
+      }, selector);
 
-      // Create data directory path
-      const dataDir = path.join(__dirname, 'data');
-      await fs.mkdir(dataDir, { recursive: true });
-
-      // Save to fixed filename (overwrites previous)
-      const contentFile = path.join(dataDir, 'last-page-content.html');
-
-      // Add timestamp header as HTML comment
-      const timestamp = new Date().toISOString();
-      const contentWithHeader = `<!-- Page content captured at: ${timestamp} -->
-<!-- URL: ${this.config.url} -->
-<!-- Selector: ${this.config.selector} -->
-
-${pageHTML}`;
-
-      await fs.writeFile(contentFile, contentWithHeader, 'utf8');
-      this.log('Page content saved to data/last-page-content.html');
+      this.log(`Found ${count} elements matching selector: ${selector}`);
+      return count;
     } catch (error) {
-      this.logError('Error saving page content:', error);
+      this.logError('Error counting elements:', error);
+      return 0;
     }
   }
 
@@ -556,11 +533,11 @@ ${pageHTML}`;
 
       if (!currentState) {
         await this.triggerAlert(
-          'Element not found on page',
+          'Unable to count elements on page',
           previousState,
           null
         );
-        return { changed: true, reason: 'element_not_found' };
+        return { changed: true, reason: 'count_failed' };
       }
 
       if (!previousState) {
@@ -571,12 +548,12 @@ ${pageHTML}`;
 
       if (currentState.hash !== previousState.hash) {
         await this.triggerAlert(
-          'Content has changed',
+          `Element count changed from ${previousState.elementCount} to ${currentState.elementCount}`,
           previousState,
           currentState
         );
         await this.saveState(currentState);
-        return { changed: true, reason: 'content_changed' };
+        return { changed: true, reason: 'count_changed' };
       }
 
       this.log('No changes detected');
@@ -636,17 +613,13 @@ ${pageHTML}`;
     }
 
     if (previousState.elementCount !== currentState.elementCount) {
-      changes.push(
-        `Element count changed: ${previousState.elementCount} → ${currentState.elementCount}`
-      );
-    }
-
-    // Compare first element's text content as sample
-    if (
-      previousState.elementData?.[0]?.textContent !==
-      currentState.elementData?.[0]?.textContent
-    ) {
-      changes.push('Text content changed');
+      const change = `Element count: ${previousState.elementCount} → ${currentState.elementCount}`;
+      const diff = currentState.elementCount - previousState.elementCount;
+      if (diff > 0) {
+        changes.push(`${change} (+${diff} elements added)`);
+      } else {
+        changes.push(`${change} (${Math.abs(diff)} elements removed)`);
+      }
     }
 
     return changes;
@@ -684,9 +657,11 @@ ${pageHTML}`;
 
     this.isMonitoring = true;
 
-    console.log('🚀 Starting Web Page Monitor');
+    console.log('🚀 Starting Element Count Monitor');
     console.log(`📍 URL: ${this.config.url}`);
-    console.log(`🎯 Selector: ${this.config.selector}`);
+    console.log(
+      `🎯 Selector: .desktop > div > div.svg:last-of-type > svg > path`
+    );
     console.log(`⏱️  Check interval: ${this.config.checkInterval / 1000}s`);
     console.log(`🌐 Browser: ${this.config.browser}`);
     console.log(`👻 Headless: ${this.config.headless}`);

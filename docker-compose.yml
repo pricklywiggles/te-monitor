@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  te-alert:
+    build: .
+    container_name: te-alert
+    restart: unless-stopped
+    environment:
+      # Required: URL to monitor
+      - MONITOR_URL=${MONITOR_URL}
+      # Required: CSS selector to watch for changes
+      - MONITOR_SELECTOR=${MONITOR_SELECTOR}
+      # Optional: Check interval in milliseconds (default: 10 minutes)
+      - MONITOR_INTERVAL=${MONITOR_INTERVAL}
+      # Optional: Enable debug logging
+      - MONITOR_DEBUG=${MONITOR_DEBUG:-false}
+      # Optional: Webhook URL for alerts
+      - MONITOR_WEBHOOK=${MONITOR_WEBHOOK}
+      # Optional: Clear previous state on startup
+      - MONITOR_CLEAR_STATE=${MONITOR_CLEAR_STATE:-true}
+
+      # Homebridge integration (optional)
+      - HB_HOST=${HB_HOST}
+      - HB_PORT=${HB_PORT:-8581}
+      - HB_PWD=${HB_PWD}
+      - ACCESSORY=${ACCESSORY}
+
+      # Puppeteer configuration for Docker
+      - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+      - PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+
+    # Logging configuration
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  default:
+    driver: bridge

@@ -519,30 +519,26 @@ class WebPageMonitor {
    */
   async savePageContent(page) {
     try {
-      // Extract page content
-      const pageText = await page.evaluate(
-        () => document.body.textContent || document.body.innerText || ''
-      );
+      // Extract full page HTML content
+      const pageHTML = await page.content();
 
       // Create data directory path
       const dataDir = path.join(__dirname, 'data');
       await fs.mkdir(dataDir, { recursive: true });
 
       // Save to fixed filename (overwrites previous)
-      const contentFile = path.join(dataDir, 'last-page-content.txt');
+      const contentFile = path.join(dataDir, 'last-page-content.html');
 
-      // Add timestamp header
+      // Add timestamp header as HTML comment
       const timestamp = new Date().toISOString();
-      const contentWithHeader = `Page content captured at: ${timestamp}
-URL: ${this.config.url}
-Selector: ${this.config.selector}
+      const contentWithHeader = `<!-- Page content captured at: ${timestamp} -->
+<!-- URL: ${this.config.url} -->
+<!-- Selector: ${this.config.selector} -->
 
-=====================================
-${pageText}
-=====================================`;
+${pageHTML}`;
 
       await fs.writeFile(contentFile, contentWithHeader, 'utf8');
-      this.log('Page content saved to data/last-page-content.txt');
+      this.log('Page content saved to data/last-page-content.html');
     } catch (error) {
       this.logError('Error saving page content:', error);
     }

@@ -19,6 +19,19 @@ const __dirname = path.dirname(__filename);
  * Monitors changes in the count of SVG path elements on a webpage
  */
 export class WebPageMonitor {
+  /**
+   * Create a new WebPageMonitor instance
+   * @param {Object} config - Configuration object
+   * @param {string} config.url - URL to monitor
+   * @param {number} [config.checkInterval] - Check interval in milliseconds
+   * @param {boolean} [config.headless=true] - Run browser in headless mode
+   * @param {boolean} [config.debug=false] - Enable debug logging
+   * @param {number} [config.maxRetries=3] - Maximum retry attempts
+   * @param {string} [config.alertWebhook] - Webhook URL for alerts
+   * @param {Function} [config.onAlert] - Alert callback function
+   * @param {Function} [config.getElementHash] - Element hash function
+   * @param {string} [config.selector='body'] - CSS selector to monitor
+   */
   constructor(config = {}) {
     const url = config.url || process.env.MONITOR_URL;
 
@@ -312,6 +325,8 @@ export class WebPageMonitor {
 
   /**
    * Utility: delay function
+   * @param {number} ms - Delay duration in milliseconds
+   * @returns {Promise<void>} Promise that resolves after the delay
    */
   delay(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));

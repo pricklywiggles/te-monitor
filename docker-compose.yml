@@ -24,6 +24,11 @@ services:
       - HB_PWD=${HB_PWD}
       - ACCESSORY=${ACCESSORY}
 
+      # Gmail mailer configuration (optional)
+      - GMAIL_USER=${GMAIL_USER}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}
+      - EMAIL_TO=${EMAIL_TO}
+
       # Puppeteer configuration for Docker
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable

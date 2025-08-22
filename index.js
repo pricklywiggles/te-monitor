@@ -7,6 +7,7 @@ export { HomebridgeClient, alertViaLamp } from './src/homebridge-client.js';
 import crypto from 'crypto';
 export { main } from './src/main.js';
 import { alertViaLamp } from './src/homebridge-client.js';
+import { sendEmail } from './src/mailer.js';
 
 const getElementHash = async (page, selector, log) => {
   try {
@@ -31,6 +32,11 @@ const getElementHash = async (page, selector, log) => {
 
 const handleAlert = async (alert) => {
   await alertViaLamp(alert.currentHash ? 240 : 120);
+  await sendEmail(
+    process.env.EMAIL_TO,
+    'Web Page Monitor Alert',
+    `Alert: ${alert.reason}`
+  );
 };
 
 // Auto-run main if this file is executed directly

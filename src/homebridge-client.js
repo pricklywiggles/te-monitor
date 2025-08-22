@@ -5,12 +5,24 @@ import axios from 'axios';
  * Handles authentication and accessory state management
  */
 export class HomebridgeClient {
+  /**
+   * Create a new HomebridgeClient instance
+   * @param {string} host - Homebridge server host
+   * @param {number} port - Homebridge server port
+   * @param {string} username - Authentication username
+   * @param {string} password - Authentication password
+   */
   constructor(host, port, username, password) {
     this.baseURL = `http://${host}:${port}`;
     this.auth = { username, password };
     this.token = null;
   }
 
+  /**
+   * Authenticate with the Homebridge server
+   * @returns {Promise<void>}
+   * @throws {Error} When authentication fails
+   */
   async login() {
     const response = await axios.post(
       `${this.baseURL}/api/auth/login`,
@@ -19,12 +31,25 @@ export class HomebridgeClient {
     this.token = response.data.access_token;
   }
 
+  /**
+   * Get list of available accessories from Homebridge
+   * @returns {Promise<import('axios').AxiosResponse>} List of accessories
+   * @throws {Error} When request fails
+   */
   async getAccessories() {
     return axios.get(`${this.baseURL}/api/accessories`, {
       headers: { Authorization: `Bearer ${this.token}` }
     });
   }
 
+  /**
+   * Set the state of a specific accessory characteristic
+   * @param {string} uniqueId - Unique identifier of the accessory
+   * @param {string} characteristic - Characteristic to modify (e.g., 'On', 'Hue')
+   * @param {any} value - Value to set for the characteristic
+   * @returns {Promise<import('axios').AxiosResponse>} Response from Homebridge API
+   * @throws {Error} When request fails
+   */
   async setAccessoryState(uniqueId, characteristic, value) {
     return axios.put(
       `${this.baseURL}/api/accessories/${uniqueId}`,

@@ -48,7 +48,9 @@ export const main = async (getElementHash, handleAlert) => {
     }
   }
 
-  // Handle graceful shutdown
+  /**
+   * Handle graceful shutdown of the monitoring process
+   */
   const shutdown = async () => {
     console.log('\n⏸️  Gracefully shutting down...');
     await monitor.stop();

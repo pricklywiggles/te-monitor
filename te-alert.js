@@ -379,6 +379,15 @@ class WebPageMonitor {
       // Wait for any lazy-loaded content
       await this.waitForLazyContent(page);
 
+      // Log entire page text content before searching for selector
+      const pageText = await page.evaluate(
+        () => document.body.textContent || document.body.innerText || ''
+      );
+      console.log('\n📄 ENTIRE PAGE TEXT CONTENT:');
+      console.log('=====================================');
+      console.log(pageText);
+      console.log('=====================================\n');
+
       // Extract element data
       const elementData = await this.extractElementData(page);
 

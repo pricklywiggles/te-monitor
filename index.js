@@ -35,7 +35,7 @@ const handleAlert = async (alert) => {
   await sendEmail(
     process.env.EMAIL_TO,
     'Web Page Monitor Alert',
-    `Alert: ${alert.reason}`
+    `Alert: ${alert.reason}\n\n${JSON.stringify(alert, null, 2)}`
   );
 };
 

@@ -14,7 +14,8 @@ COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production
 
 # Copy application files
-COPY te-alert.js ./
+COPY index.js ./
+COPY src/ ./src/
 
 # Switch back to non-root user for security
 USER pptruser

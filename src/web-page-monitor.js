@@ -28,10 +28,7 @@ export class WebPageMonitor {
       .update(url || 'default')
       .digest('hex')
       .substring(0, 8);
-    const defaultStateFile = path.join(
-      __dirname,
-      `../element-count-state-${urlHash}.json`
-    );
+    const defaultStateFile = path.join(__dirname, `../state-${urlHash}.json`);
 
     this.config = {
       ...DEFAULT_CONFIG,

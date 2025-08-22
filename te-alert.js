@@ -21,9 +21,8 @@ const __dirname = path.dirname(__filename);
 class WebPageMonitor {
   constructor(config = {}) {
     // Configuration with sensible defaults, can be overridden by environment variables
-    const url = config.url || process.env.MONITOR_URL || 'https://whpl.sh';
-    const selector =
-      config.selector || process.env.MONITOR_SELECTOR || '#contact';
+    const url = config.url || process.env.MONITOR_URL;
+    const selector = config.selector || process.env.MONITOR_SELECTOR;
 
     // Generate unique state file name based on URL and selector
     const urlHash = crypto
